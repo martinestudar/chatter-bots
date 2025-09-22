@@ -135,7 +135,7 @@ class ChatbotSustentabilidade:
     
     def mostrar_menu(self):
         print("\n" + "="*60)
-        print("🌱 CHATBOT SUSTENTABILIDADE E MEIO AMBIENTE 🌱")
+        print(" CHATBOT SUSTENTABILIDADE E MEIO AMBIENTE ")
         print("="*60)
         print("Olá! Sou seu assistente virtual especializado em sustentabilidade.")
         print("Posso responder perguntas sobre:")
@@ -156,19 +156,19 @@ class ChatbotSustentabilidade:
         self.mostrar_menu()
         
         while True:
-            pergunta = input("\n💬 Você: ").strip()
+            pergunta = input("\n Você: ").strip()
             
             if not pergunta:
-                print("🤖 Bot: Por favor, digite uma pergunta.")
+                print(" Bot: Por favor, digite uma pergunta.")
                 continue
                 
             if pergunta.lower() in ['sair', 'exit', 'quit', 'bye']:
-                print("🤖 Bot: Obrigado por usar o Chatbot Sustentabilidade! 🌍")
-                print("      Lembre-se: cada ação conta para um planeta melhor! 🌱")
+                print(" Bot: Obrigado por usar o Chatbot Sustentabilidade! ")
+                print("      Lembre-se: cada ação conta para um planeta melhor! ")
                 break
             
             resposta = self.encontrar_resposta(pergunta)
-            print(f"🤖 Bot: {resposta}")
+            print(f" Bot: {resposta}")
 
 # Execução do programa
 if __name__ == "__main__":
