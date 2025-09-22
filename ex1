@@ -1,0 +1,176 @@
+import re
+import random
+from difflib import get_close_matches
+
+class ChatbotSustentabilidade:
+    def __init__(self):
+        self.base_conhecimento = {
+            # Perguntas sobre aquecimento global
+            "o que é aquecimento global": "O aquecimento global é o aumento da temperatura média da Terra devido ao aumento dos gases do efeito estufa na atmosfera, principalmente causado por atividades humanas.",
+            "quais as causas do aquecimento global": "As principais causas são: queima de combustíveis fósseis, desmatamento, atividades industriais, agricultura intensiva e transporte. Essas atividades liberam gases como CO2, metano e óxido nitroso.",
+            "como combater o aquecimento global": "Podemos combater através de: uso de energias renováveis, redução do consumo, reflorestamento, transporte sustentável, reciclagem e mudanças no estilo de vida.",
+            
+            # Perguntas sobre reciclagem
+            "o que é reciclagem": "Reciclagem é o processo de transformar resíduos em novos produtos, reduzindo o consumo de matéria-prima virgem e diminuindo o impacto ambiental.",
+            "quais materiais podem ser reciclados": "Papel, papelão, vidro, plástico, metal, alumínio, pilhas, baterias, eletrônicos, óleo de cozinha e materiais orgânicos podem ser reciclados.",
+            "como separar o lixo corretamente": "Separe em: azul (papel), verde (vidro), amarelo (metal), vermelho (plástico), marrom (orgânico) e cinza (não reciclável). Lave os materiais antes do descarte.",
+            "onde descartar pilhas e baterias": "Leve para pontos de coleta em supermercados, farmácias, assistências técnicas ou postos de coleta municipal. Nunca descarte no lixo comum.",
+            
+            # Perguntas sobre energia sustentável
+            "o que são energias renováveis": "São fontes de energia que se renovam naturalmente, como solar, eólica, hidrelétrica, biomassa e geotérmica. São alternativas limpas aos combustíveis fósseis.",
+            "vantagens da energia solar": "É limpa, renovável, reduz a conta de luz, tem baixa manutenção, valoriza o imóvel e contribui para a redução das emissões de CO2.",
+            "como economizar energia em casa": "Use lâmpadas LED, desligue aparelhos da tomada, aproveite luz natural, use eletrodomésticos eficientes e ajuste a temperatura do ar-condicionado.",
+            
+            # Perguntas sobre água
+            "como economizar água": "Tome banhos mais curtos, feche a torneira ao escovar dentes, conserte vazamentos, reutilize água da chuva e use a máquina de lavar com carga completa.",
+            "importância da água": "A água é essencial para a vida, agricultura, indústria e ecossistemas. É um recurso finito que deve ser preservado para as futuras gerações.",
+            "o que é poluição da água": "É a contaminação de corpos d'água por substâncias nocivas como esgotos, produtos químicos, plásticos e resíduos industriais, prejudicando a vida aquática e humana.",
+            
+            # Perguntas sobre desmatamento
+            "o que causa o desmatamento": "Agricultura, pecuária, extração de madeira, urbanização, mineração e construção de infraestruturas são as principais causas do desmatamento.",
+            "consequências do desmatamento": "Perda de biodiversidade, mudanças climáticas, erosão do solo, alteração do ciclo da água e destruição de habitats naturais.",
+            "como ajudar a preservar as florestas": "Reduza o consumo de papel, compre produtos certificados, apoie ONGs ambientais, plante árvores e conscientize outras pessoas.",
+            
+            # Perguntas sobre poluição do ar
+            "principais poluentes do ar": "Monóxido de carbono, dióxido de enxofre, óxidos de nitrogênio, material particulado, ozônio e compostos orgânicos voláteis são os principais poluentes.",
+            "como reduzir a poluição do ar": "Use transporte público, caminhe, ande de bicicleta, mantenha o carro em dia, use energias limpas e evite queimadas.",
+            "efeitos da poluição do ar": "Causa problemas respiratórios, cardiovasculares, câncer, prejudica a agricultura e contribui para o aquecimento global.",
+            
+            # Perguntas sobre consumo sustentável
+            "o que é consumo sustentável": "É adquirir produtos e serviços considerando seu impacto ambiental, social e econômico, priorizando qualidade, durabilidade e responsabilidade.",
+            "como consumir de forma sustentável": "Compre apenas o necessário, escolha produtos duráveis, prefira empresas responsáveis, reutilize itens e evite o desperdício.",
+            "o que são produtos ecológicos": "São produtos fabricados com materiais sustentáveis, processos limpos, menor impacto ambiental e que podem ser reciclados ou biodegradados.",
+            
+            # Perguntas sobre biodiversidade
+            "o que é biodiversidade": "É a variedade de vida na Terra, incluindo diversidade de espécies, genes e ecossistemas. É fundamental para o equilíbrio ambiental.",
+            "por que preservar a biodiversidade": "Mantém o equilíbrio ecológico, fornece recursos naturais, contribui para medicina, agricultura e oferece serviços ambientais essenciais.",
+            "como proteger a biodiversidade": "Preserve habitats naturais, evite espécies invasoras, apoie conservação, reduza poluição e conscientize sobre a importância da natureza.",
+            
+            # Perguntas sobre mudanças climáticas
+            "o que são mudanças climáticas": "São alterações de longo prazo nos padrões climáticos globais, causadas principalmente por atividades humanas que aumentam gases do efeito estufa.",
+            "sinais das mudanças climáticas": "Aumento de temperatura, degelo das calotas polares, elevação do nível do mar, eventos extremos e alterações nos padrões de chuva.",
+            "como se adaptar às mudanças climáticas": "Desenvolva agricultura resistente, melhore infraestrutura, preserve recursos hídricos, proteja áreas costeiras e prepare-se para eventos extremos.",
+            
+            # Perguntas sobre transporte sustentável
+            "o que é transporte sustentável": "São meios de transporte que causam menor impacto ambiental, como bicicletas, transporte público, veículos elétricos e caminhadas.",
+            "vantagens do transporte público": "Reduz poluição, trânsito e consumo de combustível, é mais econômico e promove inclusão social.",
+            "benefícios da bicicleta": "Não polui, melhora a saúde, é econômica, reduz trânsito e contribui para cidades mais sustentáveis.",
+            
+            # Perguntas sobre agricultura sustentável
+            "o que é agricultura sustentável": "É um sistema de produção que mantém a produtividade, preserva o meio ambiente, é economicamente viável e socialmente justa.",
+            "práticas da agricultura sustentável": "Rotação de culturas, adubação orgânica, controle biológico de pragas, conservação da água e preservação da biodiversidade.",
+            "importância da agricultura orgânica": "Não usa agrotóxicos, preserva solo e água, produz alimentos mais saudáveis e mantém a biodiversidade.",
+            
+            # Perguntas sobre educação ambiental
+            "o que é educação ambiental": "É um processo que desenvolve consciência e conhecimento sobre questões ambientais, promovendo mudanças de atitude e comportamento.",
+            "importância da educação ambiental": "Forma cidadãos conscientes, promove sustentabilidade, previne problemas ambientais e constrói um futuro melhor para todos.",
+            
+            # Perguntas sobre desenvolvimento sustentável
+            "o que é desenvolvimento sustentável": "É um modelo que atende às necessidades atuais sem comprometer a capacidade das futuras gerações de atender às suas necessidades.",
+            "pilares do desenvolvimento sustentável": "Três pilares: ambiental (preservação), social (equidade) e econômico (viabilidade). Todos devem estar em equilíbrio.",
+            
+            # Respostas de continuação e complementares
+            "muito interessante": "Que bom que achou interessante! A sustentabilidade é realmente um tema fascinante. Tem alguma área específica que gostaria de saber mais?",
+            "obrigado": "Por nada! Estou aqui para ajudar com informações sobre sustentabilidade. Tem mais alguma dúvida?",
+            "legal": "Fico feliz que tenha gostado! Conhecimento sobre sustentabilidade é fundamental para cuidarmos do nosso planeta. Posso ajudar com mais alguma coisa?",
+            "interessante": "Sustentabilidade é um assunto muito rico! Cada pequena ação faz diferença para o meio ambiente. Quer saber sobre algum tópico específico?",
+            "bacana": "É mesmo! Quando entendemos mais sobre sustentabilidade, percebemos como podemos contribuir para um mundo melhor. Tem alguma pergunta específica?",
+            
+            # Cumprimentos e interações básicas
+            "oi": "Olá! Sou o assistente virtual sobre Sustentabilidade e Meio Ambiente. Como posso ajudá-lo hoje?",
+            "olá": "Oi! Estou aqui para responder suas dúvidas sobre sustentabilidade, meio ambiente e práticas ecológicas. O que você gostaria de saber?",
+            "bom dia": "Bom dia! Pronto para aprender sobre sustentabilidade? Posso ajudá-lo com informações sobre meio ambiente, reciclagem, energia limpa e muito mais!",
+            "boa tarde": "Boa tarde! Como posso auxiliá-lo com questões sobre sustentabilidade e preservação ambiental hoje?",
+            "boa noite": "Boa noite! Estou disponível para esclarecer suas dúvidas sobre meio ambiente e sustentabilidade. Em que posso ajudar?",
+            "tchau": "Até logo! Lembre-se: pequenas ações fazem grande diferença para o meio ambiente. Volte sempre que tiver dúvidas sobre sustentabilidade!",
+            "até logo": "Tchau! Continue cuidando do nosso planeta. Estarei aqui sempre que precisar de informações sobre sustentabilidade!",
+        }
+        
+        self.palavras_chave = {
+            "aquecimento": ["aquecimento global", "o que é aquecimento global", "como combater o aquecimento global"],
+            "reciclagem": ["o que é reciclagem", "como separar o lixo corretamente", "quais materiais podem ser reciclados"],
+            "energia": ["o que são energias renováveis", "vantagens da energia solar", "como economizar energia em casa"],
+            "água": ["como economizar água", "importância da água", "o que é poluição da água"],
+            "desmatamento": ["o que causa o desmatamento", "consequências do desmatamento", "como ajudar a preservar as florestas"],
+            "poluição": ["principais poluentes do ar", "como reduzir a poluição do ar", "efeitos da poluição do ar"],
+            "consumo": ["o que é consumo sustentável", "como consumir de forma sustentável", "o que são produtos ecológicos"],
+            "biodiversidade": ["o que é biodiversidade", "por que preservar a biodiversidade", "como proteger a biodiversidade"],
+            "clima": ["o que são mudanças climáticas", "sinais das mudanças climáticas", "como se adaptar às mudanças climáticas"],
+            "transporte": ["o que é transporte sustentável", "vantagens do transporte público", "benefícios da bicicleta"],
+        }
+        
+    def processar_entrada(self, entrada):
+        # Remove pontuação e converte para minúsculas
+        entrada_limpa = re.sub(r'[^\w\s]', '', entrada.lower())
+        return entrada_limpa
+    
+    def encontrar_resposta(self, pergunta):
+        pergunta_limpa = self.processar_entrada(pergunta)
+        
+        # Busca exata
+        if pergunta_limpa in self.base_conhecimento:
+            return self.base_conhecimento[pergunta_limpa]
+        
+        # Busca por palavras-chave
+        for palavra_chave, perguntas_relacionadas in self.palavras_chave.items():
+            if palavra_chave in pergunta_limpa:
+                pergunta_sugerida = random.choice(perguntas_relacionadas)
+                return f"Vejo que você está interessado em {palavra_chave}. {self.base_conhecimento[pergunta_sugerida]}"
+        
+        # Busca por similaridade
+        perguntas_disponiveis = list(self.base_conhecimento.keys())
+        correspondencias = get_close_matches(pergunta_limpa, perguntas_disponiveis, n=1, cutoff=0.6)
+        
+        if correspondencias:
+            return self.base_conhecimento[correspondencias[0]]
+        
+        # Resposta padrão com sugestões
+        sugestoes = [
+            "reciclagem", "energia solar", "aquecimento global", 
+            "economia de água", "transporte sustentável", "biodiversidade"
+        ]
+        sugestao = random.choice(sugestoes)
+        
+        return f"Não encontrei informações específicas sobre isso. Que tal perguntarmos sobre {sugestao}? Ou você pode perguntar sobre: reciclagem, energia renovável, mudanças climáticas, poluição, desmatamento, consumo sustentável, entre outros temas ambientais."
+    
+    def mostrar_menu(self):
+        print("\n" + "="*60)
+        print("🌱 CHATBOT SUSTENTABILIDADE E MEIO AMBIENTE 🌱")
+        print("="*60)
+        print("Olá! Sou seu assistente virtual especializado em sustentabilidade.")
+        print("Posso responder perguntas sobre:")
+        print("• Aquecimento Global e Mudanças Climáticas")
+        print("• Reciclagem e Gestão de Resíduos") 
+        print("• Energias Renováveis")
+        print("• Economia de Água")
+        print("• Desmatamento e Preservação")
+        print("• Poluição do Ar")
+        print("• Consumo Sustentável")
+        print("• Biodiversidade")
+        print("• Transporte Sustentável")
+        print("• Agricultura Sustentável")
+        print("\nDigite 'sair' para encerrar o chat.")
+        print("="*60)
+    
+    def executar(self):
+        self.mostrar_menu()
+        
+        while True:
+            pergunta = input("\n💬 Você: ").strip()
+            
+            if not pergunta:
+                print("🤖 Bot: Por favor, digite uma pergunta.")
+                continue
+                
+            if pergunta.lower() in ['sair', 'exit', 'quit', 'bye']:
+                print("🤖 Bot: Obrigado por usar o Chatbot Sustentabilidade! 🌍")
+                print("      Lembre-se: cada ação conta para um planeta melhor! 🌱")
+                break
+            
+            resposta = self.encontrar_resposta(pergunta)
+            print(f"🤖 Bot: {resposta}")
+
+# Execução do programa
+if __name__ == "__main__":
+    chatbot = ChatbotSustentabilidade()
+    chatbot.executar()
