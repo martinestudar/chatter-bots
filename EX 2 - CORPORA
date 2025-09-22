@@ -1,0 +1,328 @@
+import json
+import random
+import re
+import nltk
+from nltk.corpus import movie_reviews
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+
+class ChatbotComCorpora:
+    def __init__(self):
+        # Baixar recursos necessários do NLTK
+        self.baixar_recursos_nltk()
+        
+        # Carregar corpora
+        self.corpora = self.carregar_corpora()
+        
+        # Preparar vectorizer para similaridade
+        self.vectorizer = TfidfVectorizer(stop_words='english', lowercase=True)
+        self.corpus_vectors = None
+        self.preparar_vectorizer()
+        
+        print("Chatbot inicializado com corpora carregados.")
+    
+    def baixar_recursos_nltk(self):
+        """Baixa recursos necessários do NLTK"""
+        try:
+            nltk.download('punkt', quiet=True)
+            nltk.download('stopwords', quiet=True)
+            nltk.download('movie_reviews', quiet=True)
+        except:
+            pass
+    
+    def carregar_corpora(self):
+        """Carrega diferentes corpora para o chatbot"""
+        corpora = {}
+        
+        # Corpus de saudações e conversas básicas
+        corpora['conversacao_basica'] = {
+            'pares': [
+                ("olá", "Olá! Como posso ajudar você hoje?"),
+                ("oi", "Oi! É um prazer conversar com você."),
+                ("como você está", "Estou bem, obrigado. E você, como está?"),
+                ("qual é o seu nome", "Meu nome é ChatBot. Como posso te chamar?"),
+                ("tchau", "Até logo! Foi bom conversar com você."),
+                ("adeus", "Adeus! Espero te ver novamente em breve."),
+                ("obrigado", "De nada! Fico feliz em poder ajudar."),
+                ("por favor me ajude", "Claro! Estou aqui para ajudar. O que você precisa?"),
+                ("bom dia", "Bom dia! Espero que tenha um ótimo dia."),
+                ("boa tarde", "Boa tarde! Como posso ajudar?"),
+                ("boa noite", "Boa noite! Em que posso ser útil?"),
+            ]
+        }
+        
+        # Corpus de perguntas frequentes
+        corpora['faq'] = {
+            'pares': [
+                ("o que você pode fazer", "Posso conversar, responder perguntas, ajudar com informações e fornecer suporte geral."),
+                ("como você funciona", "Funciono através de processamento de linguagem natural e análise de similaridade entre textos."),
+                ("você é inteligente", "Sou um programa de computador projetado para simular conversas naturais."),
+                ("que tipo de ajuda você oferece", "Ofereço conversação, respostas a perguntas, informações gerais e suporte básico."),
+                ("você aprende", "Sim, uso diferentes corpora de dados para encontrar as melhores respostas."),
+                ("qual é a sua função", "Minha função é auxiliar usuários através de conversação natural e fornecimento de informações."),
+                ("você tem limitações", "Sim, minhas respostas são baseadas nos dados que tenho disponíveis."),
+            ]
+        }
+        
+        # Corpus de conhecimento geral
+        corpora['conhecimento_geral'] = {
+            'pares': [
+                ("o que é inteligência artificial", "Inteligência artificial é a capacidade de máquinas executarem tarefas que normalmente requerem inteligência humana."),
+                ("como funciona um computador", "Um computador processa informações através de circuitos eletrônicos usando linguagem binária."),
+                ("o que é programação", "Programação é o processo de criar instruções para computadores executarem tarefas específicas."),
+                ("explique machine learning", "Machine learning é um método de análise que automatiza a construção de modelos analíticos usando dados."),
+                ("o que é python", "Python é uma linguagem de programação de alto nível, interpretada e de propósito geral."),
+                ("para que serve um banco de dados", "Bancos de dados servem para armazenar, organizar e gerenciar grandes volumes de informações."),
+                ("o que é internet", "A internet é uma rede global de computadores interconectados que permite comunicação e compartilhamento de informações."),
+            ]
+        }
+        
+        # Corpus de suporte emocional
+        corpora['suporte_emocional'] = {
+            'pares': [
+                ("estou triste", "Lamento saber que está se sentindo triste. Quer conversar sobre o que está acontecendo?"),
+                ("estou feliz", "Que bom! Fico contente em saber que está bem. O que te deixou feliz hoje?"),
+                ("preciso de ajuda", "Estou aqui para ajudar. Pode me contar o que está precisando?"),
+                ("estou confuso", "Entendo. Às vezes as coisas podem parecer complicadas. Vamos conversar sobre isso?"),
+                ("me sinto sozinho", "Sinto muito por isso. Lembre-se que você não está sozinho, estou aqui para conversar."),
+                ("estou preocupado", "Entendo sua preocupação. Quer compartilhar o que está te deixando assim?"),
+                ("não sei o que fazer", "Situações difíceis podem ser desafiadoras. Que tal conversarmos sobre as opções disponíveis?"),
+            ]
+        }
+        
+        # Corpus de diálogos casuais
+        corpora['dialogo_casual'] = {
+            'pares': [
+                ("que tempo faz hoje", "Não tenho acesso ao clima atual, mas espero que seja um dia agradável para você."),
+                ("o que você gosta de fazer", "Gosto de conversar e ajudar pessoas. E você, quais são seus interesses?"),
+                ("conte uma piada", "Por que os programadores preferem o escuro? Porque eles não gostam de bugs!"),
+                ("você tem amigos", "Considero todas as pessoas com quem converso como companhias agradáveis."),
+                ("qual sua cor favorita", "Não percebo cores, mas imagino que azul seria interessante."),
+                ("você dorme", "Não durmo, estou sempre disponível para conversar."),
+                ("o que você come", "Não como, mas meu 'alimento' são os dados e informações que processo."),
+                ("você tem família", "Minha 'família' são os desenvolvedores que me criaram e os usuários com quem interajo."),
+            ]
+        }
+        
+        # Corpus de informações técnicas
+        corpora['tecnico'] = {
+            'pares': [
+                ("como criar um programa", "Para criar um programa, você precisa escolher uma linguagem de programação e seguir sua sintaxe para escrever instruções."),
+                ("o que é um algoritmo", "Um algoritmo é uma sequência finita de instruções bem definidas para resolver um problema."),
+                ("como aprender programação", "Comece escolhendo uma linguagem, pratique com exercícios simples e construa projetos gradualmente."),
+                ("o que é debugging", "Debugging é o processo de encontrar e corrigir erros em programas de computador."),
+                ("para que serve uma variável", "Variáveis servem para armazenar dados temporariamente na memória durante a execução de um programa."),
+            ]
+        }
+        
+        return corpora
+    
+    def preparar_vectorizer(self):
+        """Prepara o vectorizer com todos os textos do corpus"""
+        todos_textos = []
+        self.mapeamento_resposta = []
+        
+        # Coletir todos os pares pergunta-resposta
+        for categoria, dados in self.corpora.items():
+            for pergunta, resposta in dados['pares']:
+                todos_textos.append(pergunta.lower())
+                self.mapeamento_resposta.append(resposta)
+        
+        # Treinar vectorizer
+        if todos_textos:
+            self.corpus_vectors = self.vectorizer.fit_transform(todos_textos)
+            self.textos_corpus = todos_textos
+    
+    def encontrar_melhor_resposta(self, entrada_usuario):
+        """Encontra a melhor resposta usando similaridade de cosseno"""
+        if self.corpus_vectors is None:
+            return "Desculpe, ainda estou processando os dados. Pode reformular sua pergunta?"
+        
+        # Vectorizar entrada do usuário
+        entrada_vector = self.vectorizer.transform([entrada_usuario.lower()])
+        
+        # Calcular similaridades
+        similaridades = cosine_similarity(entrada_vector, self.corpus_vectors).flatten()
+        
+        # Encontrar melhor match
+        melhor_indice = np.argmax(similaridades)
+        melhor_similaridade = similaridades[melhor_indice]
+        
+        # Definir limiar de similaridade
+        limiar = 0.15
+        
+        if melhor_similaridade > limiar:
+            return self.mapeamento_resposta[melhor_indice]
+        else:
+            return self.resposta_generica()
+    
+    def resposta_generica(self):
+        """Retorna uma resposta genérica quando não encontra match"""
+        respostas_genericas = [
+            "Interessante. Pode me contar mais sobre isso?",
+            "Não tenho certeza sobre isso. Pode explicar melhor?",
+            "Essa é uma boa pergunta. O que você pensa sobre isso?",
+            "Não tenho uma resposta específica para isso no momento.",
+            "Pode reformular sua pergunta? Talvez eu consiga ajudar melhor.",
+            "Esse é um tópico interessante. Me conte mais detalhes.",
+            "Preciso de mais informações para poder ajudar adequadamente.",
+            "Não estou familiarizado com esse assunto especificamente."
+        ]
+        return random.choice(respostas_genericas)
+    
+    def processar_entrada(self, entrada):
+        """Processa a entrada do usuário e retorna uma resposta"""
+        entrada_limpa = entrada.strip().lower()
+        
+        # Verificar se é comando de saída
+        comandos_saida = ['tchau', 'adeus', 'até logo', 'sair', 'quit', 'exit']
+        if any(cmd in entrada_limpa for cmd in comandos_saida):
+            respostas_despedida = [
+                "Até logo! Foi bom conversar com você.",
+                "Adeus! Espero que nossa conversa tenha sido útil.",
+                "Tchau! Volte sempre que precisar.",
+                "Até mais! Foi um prazer ajudar."
+            ]
+            return random.choice(respostas_despedida)
+        
+        # Encontrar resposta baseada em similaridade
+        resposta = self.encontrar_melhor_resposta(entrada_limpa)
+        return resposta
+    
+    def mostrar_estatisticas_corpora(self):
+        """Mostra estatísticas dos corpora carregados"""
+        print("\n" + "="*50)
+        print("ESTATISTICAS DOS CORPORA")
+        print("="*50)
+        
+        total_pares = 0
+        for categoria, dados in self.corpora.items():
+            num_pares = len(dados['pares'])
+            total_pares += num_pares
+            nome_categoria = categoria.replace('_', ' ').title()
+            print(f"{nome_categoria}: {num_pares} pares")
+        
+        print(f"\nTotal de pares pergunta-resposta: {total_pares}")
+        if hasattr(self.vectorizer, 'vocabulary_'):
+            print(f"Tamanho do vocabulário: {len(self.vectorizer.vocabulary_)}")
+        print("="*50 + "\n")
+    
+    def adicionar_novo_par(self, pergunta, resposta, categoria='personalizado'):
+        """Permite adicionar novos pares ao corpus"""
+        if categoria not in self.corpora:
+            self.corpora[categoria] = {'pares': []}
+        
+        self.corpora[categoria]['pares'].append((pergunta.lower(), resposta))
+        
+        # Recriar vectorizer
+        self.preparar_vectorizer()
+        
+        return f"Novo par adicionado à categoria '{categoria}' com sucesso."
+    
+    def listar_categorias(self):
+        """Lista todas as categorias disponíveis"""
+        print("\nCATEGORIAS DE CORPORA DISPONIVEIS:")
+        print("-" * 40)
+        for i, categoria in enumerate(self.corpora.keys(), 1):
+            nome_amigavel = categoria.replace('_', ' ').title()
+            num_pares = len(self.corpora[categoria]['pares'])
+            print(f"{i}. {nome_amigavel} ({num_pares} pares)")
+        print("-" * 40)
+    
+    def buscar_por_categoria(self, categoria):
+        """Mostra todos os pares de uma categoria específica"""
+        if categoria in self.corpora:
+            print(f"\nPares da categoria '{categoria.replace('_', ' ').title()}':")
+            print("-" * 40)
+            for i, (pergunta, resposta) in enumerate(self.corpora[categoria]['pares'], 1):
+                print(f"{i}. P: {pergunta}")
+                print(f"   R: {resposta}\n")
+            print("-" * 40)
+        else:
+            print(f"Categoria '{categoria}' não encontrada.")
+
+def main():
+    """Função principal do chatbot"""
+    print("Chatbot com Corpora v1.0")
+    print("="*50)
+    print("Inicializando sistema...")
+    
+    try:
+        # Inicializar chatbot
+        chatbot = ChatbotComCorpora()
+        
+        print("\nFuncionalidades disponíveis:")
+        print("- Conversação baseada em múltiplos corpora")
+        print("- Análise de similaridade semântica")
+        print("- Base de conhecimento categorizada")
+        print("- Sistema de aprendizado expansível")
+        
+        print("\nComandos disponíveis:")
+        print("'stats' - Exibir estatísticas dos corpora")
+        print("'categorias' - Listar todas as categorias") 
+        print("'adicionar' - Incluir novo par pergunta-resposta")
+        print("'buscar <categoria>' - Ver pares de uma categoria")
+        print("'sair' - Encerrar programa")
+        print("="*50)
+        
+        contador_mensagens = 0
+        
+        while True:
+            # Entrada do usuário
+            entrada = input(f"\n[{contador_mensagens+1}] Usuário: ").strip()
+            
+            if not entrada:
+                print("Chatbot: Por favor, digite uma mensagem.")
+                continue
+            
+            contador_mensagens += 1
+            
+            # Processar comandos especiais
+            if entrada.lower() == 'stats':
+                chatbot.mostrar_estatisticas_corpora()
+                continue
+            elif entrada.lower() == 'categorias':
+                chatbot.listar_categorias()
+                continue
+            elif entrada.lower().startswith('buscar '):
+                categoria = entrada[7:].strip().replace(' ', '_').lower()
+                chatbot.buscar_por_categoria(categoria)
+                continue
+            elif entrada.lower() == 'adicionar':
+                print("\nAdicionar novo par pergunta-resposta:")
+                pergunta = input("Digite a pergunta: ").strip()
+                resposta = input("Digite a resposta: ").strip()
+                categoria = input("Digite a categoria (opcional): ").strip()
+                
+                if pergunta and resposta:
+                    if not categoria:
+                        categoria = 'personalizado'
+                    resultado = chatbot.adicionar_novo_par(pergunta, resposta, categoria)
+                    print(resultado)
+                else:
+                    print("Erro: Pergunta e resposta são obrigatórias.")
+                continue
+            elif entrada.lower() in ['sair', 'quit', 'exit']:
+                print("Chatbot: Encerrando programa. Até logo!")
+                break
+            
+            # Processar entrada normal
+            resposta = chatbot.processar_entrada(entrada)
+            print(f"Chatbot: {resposta}")
+            
+            # Verificar se usuário quer sair pela resposta
+            if any(palavra in entrada.lower() for palavra in ['tchau', 'adeus', 'até logo']):
+                break
+                
+    except KeyboardInterrupt:
+        print(f"\nPrograma interrompido pelo usuário.")
+    except Exception as e:
+        print(f"\nErro durante execução: {str(e)}")
+    finally:
+        print("Programa finalizado.")
+
+if __name__ == "__main__":
+    main()[]
