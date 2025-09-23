@@ -1,0 +1,57 @@
+!pip install datasets==2.19.1
+!pip install transformers sentencepiece scikit-learn torch tqdm
+
+from datasets import load_dataset
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.neighbors import NearestNeighbors
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+def prepare_daily_dialog_pairs(max_examples=5000):
+    dataset = load_dataset("daily_dialog")
+    pairs = []
+    for split in ["train", "validation", "test"]:
+        for dialog in dataset[split]["dialog"]:
+            for i in range(len(dialog) - 1):
+                pairs.append((dialog[i], dialog[i + 1]))
+                if len(pairs) >= max_examples:
+                    return pairs
+    return pairs
+
+print("Carregando dados do DailyDialog...")
+pairs = prepare_daily_dialog_pairs(5000)
+print(f"Pares carregados: {len(pairs)}")
+
+vectorizer = TfidfVectorizer()
+X = vectorizer.fit_transform([p[0] for p in pairs])
+nn = NearestNeighbors(n_neighbors=1, metric="cosine").fit(X)
+
+def retrieve_response(user_input):
+    vec = vectorizer.transform([user_input])
+    idx = nn.kneighbors(vec, return_distance=False)[0][0]
+    return pairs[idx][1]
+
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+model = AutoModelForCausalLM.from_pretrained("gpt2")
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+def generate_response(user_input):
+    inputs = tokenizer(user_input, return_tensors="pt", padding=True)
+    outputs = model.generate(**inputs, max_length=40, pad_token_id=tokenizer.eos_token_id)
+    return tokenizer.decode(outputs[0], skip_special_tokens=True).replace(user_input, "").strip()
+
+print("\n Chatbot pronto! (Digite 'sair' para encerrar)\n")
+
+while True:
+    user = input("Você: ")
+    if user.lower() in ["sair", "exit", "quit"]:
+        print("Bot: Até mais! ")
+        break
+
+    resp_retrieval = retrieve_response(user)
+
+    resp_generation = generate_response(user)
+
+    print(f"Bot (retrieval): {resp_retrieval}")
+    print(f"Bot (geração):  {resp_generation}")
