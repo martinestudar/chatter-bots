@@ -1,0 +1,82 @@
+!pip install datasets==2.19.1
+!pip install transformers sentencepiece scikit-learn torch tqdm
+
+from datasets import load_dataset
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.neighbors import NearestNeighbors
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+
+# ---------------------- Preparar DailyDialog ----------------------
+def prepare_daily_dialog_pairs(max_examples=5000):
+    dataset = load_dataset("daily_dialog")
+    pairs = []
+    for split in ["train", "validation"]:
+        for dialog in dataset[split]["dialog"]:
+            for i in range(len(dialog)-1):
+                pairs.append((dialog[i], dialog[i+1]))
+                if len(pairs) >= max_examples:
+                    return pairs
+    return pairs
+
+pairs = prepare_daily_dialog_pairs()
+vectorizer = TfidfVectorizer()
+X = vectorizer.fit_transform([p[0] for p in pairs])
+nn = NearestNeighbors(n_neighbors=1, metric="cosine").fit(X)
+
+def retrieve_response(user_input):
+    vec = vectorizer.transform([user_input])
+    idx = nn.kneighbors(vec, return_distance=False)[0][0]
+    return pairs[idx][1]
+
+# ---------------------- Carregar DialoGPT-small ----------------------
+model_name = "microsoft/DialoGPT-small"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+# ---------------------- Funções de geração ----------------------
+def generate_coherent(prompt):
+    input_ids = tokenizer.encode(prompt + " ", return_tensors="pt").to(device)
+    output = model.generate(
+        input_ids,
+        max_length=input_ids.shape[1]+50,
+        do_sample=True,
+        temperature=0.3,
+        top_k=20,
+        top_p=0.9,
+        pad_token_id=tokenizer.eos_token_id
+    )
+    return tokenizer.decode(output[0], skip_special_tokens=True).replace(prompt, "").strip()
+
+def generate_creative(prompt):
+    input_ids = tokenizer.encode(prompt + " ", return_tensors="pt").to(device)
+    output = model.generate(
+        input_ids,
+        max_length=input_ids.shape[1]+100,
+        do_sample=True,
+        temperature=0.9,
+        top_k=50,
+        top_p=0.95,
+        pad_token_id=tokenizer.eos_token_id
+    )
+    return tokenizer.decode(output[0], skip_special_tokens=True).replace(prompt, "").strip()
+
+# ---------------------- Loop interativo ----------------------
+while True:
+    user_input = input("Você: ")
+    if user_input.lower() in ["sair", "exit", "quit"]:
+        print("Bot: Até mais!")
+        break
+
+    resp_retrieval = retrieve_response(user_input)
+    resp_coherent = generate_coherent(user_input)
+    resp_creative = generate_creative(user_input)
+
+    print(f"Bot (retrieval): {resp_retrieval}")
+    print(f"Bot (coerente):  {resp_coherent}")
+    print(f"Bot (criativa):  {resp_creative}")
